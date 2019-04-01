@@ -1,18 +1,19 @@
 # coding=utf-8
 import hashlib
 import json
-
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.common.exceptions import TimeoutException
+from selenium.common.exceptions import WebDriverException
 import re
 import time
 import pymongo
 import random
 from lxml import etree
 import redis
+from logger import crawler
 
 
 class A1688():
@@ -23,7 +24,8 @@ class A1688():
         # proxy = "--proxy-server=http://" + self.proxy_ip
         # self.chromeOptions.add_argument(proxy)
         self.browser = webdriver.Chrome(chrome_options=self.chromeOptions)
-        self.wait = WebDriverWait(self.browser, 15)
+        # self.chromeOptions.add_argument('--log-level=5')
+        self.wait = WebDriverWait(self.browser, 20)
         self.browser.set_window_size(1400, 900)
         self.client = pymongo.MongoClient('localhost')
         self.db = self.client['A1688']
@@ -62,13 +64,17 @@ class A1688():
             item["url"] = url
             # print(item)
             self.SaveUrl_to_redis(item)
-        page = self.get_page_num()
-        if page and page > 1:
-            print("Page Num:", page)
-            for page in range(2, page + 1):
-                self.get_more_page(page, item)
-                import random
-                time.sleep(random.uniform(1,2))
+        pages = self.get_page_num()
+        if pages and pages > 1:
+            print("Page Num:", pages)
+            for page in range(2, pages + 1):
+                crawler.warning("当前是第 " + str(page) + " 页")
+                try:
+                    self.get_more_page(page, item)
+                    time.sleep(random.uniform(3,5))
+                except Exception:
+                    self.get_more_page(page, item)
+                    time.sleep(random.uniform(4, 5))
 
     def get_page_num(self):
         try:
@@ -87,44 +93,77 @@ class A1688():
             EC.presence_of_element_located((By.CLASS_NAME, "fui-paging-input")))
         page_input.clear()
         page_input.send_keys(page)
-        page_button = self.wait.until(EC.element_to_be_clickable((By.CLASS_NAME, "fui-paging-btn")))
-        page_button.click()
+        try:
+            page_button = self.wait.until(EC.element_to_be_clickable((By.CLASS_NAME, "fui-paging-btn")))
+            page_button.click()
+        except WebDriverException:
+            try:
+                page_button = self.wait.until(EC.element_to_be_clickable((By.XPATH, "//*[@id='fui_widget_5']/div/span[3]/button")))
+                page_button.click()
+            except:
+                page_button = self.wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "#fui_widget_5 > div > span.fui-forward > button")))
+                page_button.click()
+        except Exception:
+            page_button = self.wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "#fui_widget_5 > div > span.fui-forward > button")))
+            page_button.click()
+
+        # try:
+        #     page_click = self.wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "#fui_widget_5 > span > a.fui-next")))
+        #     if page_click:
+        #         page_click.click()
+        #     else:
+        #         pass
+        # except:
+        #     pass
+
         # 并没有起作用
         # browser.execute_script('window.scrollTo(0, document.body.scrollHeight)')
         # 非常重要，让浏览器缓过来
-        time.sleep(2)
+        time.sleep(random.uniform(2,3))
         # 起作用，因为broswer反应过来了
-        self.browser.execute_script('window.scrollTo(0, document.body.scrollHeight)')
-        time.sleep(1)
-        self.browser.execute_script('window.scrollTo(0, document.body.scrollHeight)')
+        js = "var q=document.documentElement.scrollTop=2500"
+        self.browser.execute_script(js)
+        time.sleep(random.uniform(1,3))
+        js = "var q=document.documentElement.scrollTop=4800"
+        self.browser.execute_script(js)
+        time.sleep(random.uniform(1,2))
+        # self.browser.execute_script('window.scrollTo(0, document.body.scrollHeight)')
+        # time.sleep(1.5)
+        # self.browser.execute_script('window.scrollTo(0, document.body.scrollHeight)')
         print('执行到底部')
         try:
             self.wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, '#offer60')))
         except:
             print('*' * 30, '超时加载', '*' * 30)
-        for url in self.get_products():
-            item["url"] = url
-            # print(item)
-            self.SaveUrl_to_redis(item)
+        if self.get_products():
+            for url in self.get_products():
+                item["url"] = url
+                # print(item)
+                self.SaveUrl_to_redis(item)
 
     def get_products(self):
-        html = self.browser.page_source
-        doc = etree.HTML(html)
-        lis = doc.xpath("//ul[@id='sm-offer-list']/li")
-        index = 0
-        for li in lis:
-            try:
-                link = li.xpath(".//span[@class='sm-offer-companyTag sw-dpl-offer-companyTag']/a/@href")[0]
-                link_split =link.split('page/creditdetail')
-                new_link = link_split[0] + "page/contactinfo.htm"
-                index +=1
-            except IndexError:
-                new_link = None
-            # print(new_link)
-            yield new_link
+        try:
+            html = self.browser.page_source
+            doc = etree.HTML(html)
+            lis = doc.xpath("//ul[@id='sm-offer-list']/li")
+            index = 0
+            for li in lis:
+                try:
+                    link = li.xpath(".//span[@class='sm-offer-companyTag sw-dpl-offer-companyTag']/a/@href")[0]
+                    link_split =link.split('page/creditdetail')
+                    new_link = link_split[0] + "page/contactinfo.htm"
+                    index +=1
+                except IndexError as e:
+                    # crawler.warning("PARSE ERROR")
+                    # print("PARSE ERROR:",e )
+                    new_link = None
+                # print(new_link)
+                yield new_link
 
-        print('	(●ˇ∀ˇ●)	' * 5)
-        print('一共%d条数据' % index)
+            print('	(●ˇ∀ˇ●)	' * 5)
+            print('一共%d条数据' % index)
+        except Exception:
+            return None
 
     def get_md5(self, data):
         md5 = hashlib.md5()
@@ -137,20 +176,21 @@ class A1688():
                 pass
             return md5.hexdigest()
         except Exception as e:
-            print("GET MD5 ERROR:",e)
+            crawler.warning("GET MD5 ERROR")
+            # print("GET MD5 ERROR:",e)
             return None
 
     def SaveUrl_to_redis(self, data):
         try:
-            if data:
+            if data and data["url"]:
                 data_md5 = self.get_md5(data["url"])
                 if data_md5:
                     if self.redis_client.hset("A1688_Url", data_md5, data):
                         print("成功存储到REDIS", data)
                     else:
-                        print("存储到REDIS失败", data)
+                        print("存储URL已经存在", data)
         except Exception as e:
-            print(e)
+            print("SAVE TO REDIS ERROR:",e)
             pass
 
     def save_to_mongo(self, item, key):
@@ -169,18 +209,21 @@ class A1688():
             
     def del_redis_str(self, redis_str):
         redis_md5 = redis_str.decode()
-        print("DEL REDIS_MD5")
         self.redis_client.hdel("A1688",redis_md5)
     
     def run(self):
         for md5 in self.redis_client.hgetall("A1688"):
             data_dict = self.get_redis_data(md5)
             key = data_dict.get("tag")
+            print("DEL REDIS_TAG:", key)
+            self.del_redis_str(md5)
+            crawler.warning("当前tag: " + key)
             time.sleep(3)
             self.crawle(key, data_dict)
-            self.del_redis_str(md5)
+
 
 if __name__ == '__main__':
     A = A1688()
     A.run()
 
+"https://s.1688.com/selloffer/offer_search.htm?keywords=%CA%D6%BB%FA&beginPage=5"
