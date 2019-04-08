@@ -45,23 +45,26 @@ class A1688():
         # submit_button = self.wait.until(
         #     EC.element_to_be_clickable((By.ID, "alisearch-submit")))
         # submit_button.click()
-
+        # 这里直接用浏览器get
         self.browser.get("https://s.1688.com/selloffer/offer_search.htm?keywords=" + quote(key, encoding="gb2312") + "&beginPage=1")
         try:
             button_1 = self.wait.until(EC.element_to_be_clickable((By.CLASS_NAME, "s-overlay-close-l")))
             button_1.click()
         except:
             pass
-
-        button_deal = self.browser.find_elements_by_css_selector('.sm-widget-sort.fd-clr.s-widget-sortfilt li')[1]
-        button_deal.click()
+        try:
+            button_deal = self.browser.find_elements_by_css_selector('.sm-widget-sort.fd-clr.s-widget-sortfilt li')[1]
+            button_deal.click()
+        except:
+            pass
 
         try:
             self.browser.execute_script('window.scrollTo(0, document.body.scrollHeight)')
+            time.sleep(1)
             self.browser.execute_script('window.scrollTo(0, document.body.scrollHeight)')
             self.wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, '#offer60')))
         except:
-            print('*' * 30, '超时加载', '*' * 30)
+            print('超时加载')
         for url in self.get_products():
             item["url"] = url
             # print(item)
@@ -73,7 +76,7 @@ class A1688():
                 crawler.warning("当前是第 " + str(page) + " 页")
                 page_url = "https://s.1688.com/selloffer/offer_search.htm?keywords=" + quote(key, encoding="gb2312") + "&n=y#beginPage=" + str(page)
                 try:
-                    if "缩短或修改您的搜索词，重新搜索" in self.browser.page_source:
+                    if "缩短或修改您的搜索词，重新搜索" in self.browser.page_source: # 已经没有内容了 也是出口
                         crawler.warning("页面枯竭 ...")
                         break
                     self.get_more_page(page_url, item)
@@ -82,7 +85,7 @@ class A1688():
                     self.get_more_page(page_url, item)
                     time.sleep(random.uniform(4, 5))
 
-    def get_page_num(self):
+    def get_page_num(self): # 总页数
         try:
             doc = self.doc_xpath(self.browser.page_source)
             page_num = doc.xpath("//div[@class='fui-paging']/div/span[@class='fui-paging-total']/em/text()")[0]
@@ -91,7 +94,7 @@ class A1688():
             print(e)
             return None
 
-    def doc_xpath(self, html):
+    def doc_xpath(self, html): # xpath
         return etree.HTML(html)
 
     def get_more_page(self, page_url, item):
@@ -117,25 +120,18 @@ class A1688():
         #     page_button.click()
 
         self.browser.get(page_url)
-        # 并没有起作用
-        # browser.execute_script('window.scrollTo(0, document.body.scrollHeight)')
-        # 非常重要，让浏览器缓过来
         time.sleep(random.uniform(2, 3))
-        # 起作用，因为broswer反应过来了
         js = "var q=document.documentElement.scrollTop=2500"
         self.browser.execute_script(js)
         time.sleep(random.uniform(1, 3))
         js = "var q=document.documentElement.scrollTop=4600"
         self.browser.execute_script(js)
         time.sleep(random.uniform(1, 2))
-        # self.browser.execute_script('window.scrollTo(0, document.body.scrollHeight)')
-        # time.sleep(1.5)
-        # self.browser.execute_script('window.scrollTo(0, document.body.scrollHeight)')
         print('执行到底部')
         try:
             self.wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, '#offer60')))
         except:
-            print('*' * 30, '超时加载', '*' * 30)
+            print('超时加载')
         if self.get_products():
             for url in self.get_products():
                 item["url"] = url
@@ -160,9 +156,7 @@ class A1688():
                     new_link = None
                 # print(new_link)
                 yield new_link
-
-            print('	(●ˇ∀ˇ●)	' * 5)
-            print('一共%d条数据' % index)
+            print('一共{}条数据'.format(index))
         except Exception:
             pass
 
