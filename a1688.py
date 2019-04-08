@@ -50,16 +50,19 @@ class A1688():
             button_1.click()
         except:
             pass
-
-        button_deal = self.browser.find_elements_by_css_selector('.sm-widget-sort.fd-clr.s-widget-sortfilt li')[1]
-        button_deal.click()
+        
+        try:
+            button_deal = self.browser.find_elements_by_css_selector('.sm-widget-sort.fd-clr.s-widget-sortfilt li')[1]
+            button_deal.click()
+        except:
+            pass
 
         try:
             self.browser.execute_script('window.scrollTo(0, document.body.scrollHeight)')
             self.browser.execute_script('window.scrollTo(0, document.body.scrollHeight)')
             self.wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, '#offer60')))
         except:
-            print('*' * 30, '超时加载', '*' * 30)
+            print('超时加载')
         for url in self.get_products():
             item["url"] = url
             # print(item)
@@ -76,7 +79,7 @@ class A1688():
                     self.get_more_page(page, item)
                     time.sleep(random.uniform(4, 5))
 
-    def get_page_num(self):
+    def get_page_num(self): # 获取页数
         try:
             doc = self.doc_xpath(self.browser.page_source)
             page_num = doc.xpath("//div[@class='fui-paging']/div/span[@class='fui-paging-total']/em/text()")[0]
@@ -85,10 +88,10 @@ class A1688():
             print(e)
             return None
 
-    def doc_xpath(self, html):
+    def doc_xpath(self, html):  # xpath
         return etree.HTML(html)
 
-    def get_more_page(self, page, item):
+    def get_more_page(self, page, item): # 更多的页面
         page_input = self.wait.until(
             EC.presence_of_element_located((By.CLASS_NAME, "fui-paging-input")))
         page_input.clear()
@@ -116,25 +119,19 @@ class A1688():
         # except:
         #     pass
 
-        # 并没有起作用
-        # browser.execute_script('window.scrollTo(0, document.body.scrollHeight)')
-        # 非常重要，让浏览器缓过来
         time.sleep(random.uniform(2,3))
-        # 起作用，因为broswer反应过来了
+        # 向下拉动滚动条 1688这玩意属于ajax慢加载
         js = "var q=document.documentElement.scrollTop=2500"
         self.browser.execute_script(js)
         time.sleep(random.uniform(1,3))
         js = "var q=document.documentElement.scrollTop=4800"
         self.browser.execute_script(js)
         time.sleep(random.uniform(1,2))
-        # self.browser.execute_script('window.scrollTo(0, document.body.scrollHeight)')
-        # time.sleep(1.5)
-        # self.browser.execute_script('window.scrollTo(0, document.body.scrollHeight)')
         print('执行到底部')
         try:
             self.wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, '#offer60')))
         except:
-            print('*' * 30, '超时加载', '*' * 30)
+            print('超时加载')
         if self.get_products():
             for url in self.get_products():
                 item["url"] = url
@@ -159,13 +156,11 @@ class A1688():
                     new_link = None
                 # print(new_link)
                 yield new_link
-
-            print('	(●ˇ∀ˇ●)	' * 5)
-            print('一共%d条数据' % index)
+            print('一共{}条数据'.format(index)) #记录一下每一页有多少条信息
         except Exception:
             return None
 
-    def get_md5(self, data):
+    def get_md5(self, data): # 获取md5值
         md5 = hashlib.md5()
         try:
             if isinstance(data, dict) or isinstance(data, list):
@@ -180,7 +175,7 @@ class A1688():
             # print("GET MD5 ERROR:",e)
             return None
 
-    def SaveUrl_to_redis(self, data):
+    def SaveUrl_to_redis(self, data): # 保存到redis  hash去重
         try:
             if data and data["url"]:
                 data_md5 = self.get_md5(data["url"])
@@ -201,13 +196,13 @@ class A1688():
             else:
                 print("存储到MONGODB失败", item["name"])
     
-    def get_redis_data(self,redis_str):
+    def get_redis_data(self,redis_str):  # get redis data  return
         md5 = redis_str.decode()
         data = self.redis_client.hget("A1688",md5)
         data_dict = json.loads(data.decode())
         return data_dict
-            
-    def del_redis_str(self, redis_str):
+       
+    def del_redis_str(self, redis_str): # 删除
         redis_md5 = redis_str.decode()
         self.redis_client.hdel("A1688",redis_md5)
     
