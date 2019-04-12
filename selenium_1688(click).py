@@ -14,7 +14,10 @@ import random
 from lxml import etree
 import redis
 from logger import crawler
-
+'''
+根据元素点击跳转页面 有些时候有不确定因素 导致不能成功跳转 自动化链路不能继续
+所以要改用浏览器get方式来请求页面 见selenium_1688(browser get).py
+'''
 
 class A1688():
 
