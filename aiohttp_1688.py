@@ -1,3 +1,8 @@
+'''
+这里有一个问题 对于redis数据量比较大的话 直接hkeys  hvals 或者hgetall
+出来的时候 会加载很长的时候 因为他要全部加载到内存 再去出来 这是得不偿失的
+所以 改了一下使用list的形式 rpop或者lpop出来 就不回消耗redis的性能了 需要做的是取出来之后 要做一个去重  也就是说hash值update  不获取
+'''
 # coding=utf-8
 import asyncio
 import json
