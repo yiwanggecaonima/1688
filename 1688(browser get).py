@@ -15,7 +15,10 @@ from lxml import etree
 import redis
 from logger import crawler
 from urllib.request import quote
-
+'''
+改成直接使用浏览器get的方式请求  会减少一些不定元素的影响
+代码整体会更灵活
+'''
 
 class A1688():
 
