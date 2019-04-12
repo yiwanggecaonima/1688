@@ -1249,21 +1249,21 @@ lst = [
 {'class': '纺织皮革市场', 'tag': '化纤混纺'}
 ]
 
-print(len(lst))
-import redis
-import json
+# print(len(lst))
+# import redis
+# import json
+# # 刚开始以为直接hash实现去重就好了 事实说明加载时间过长 不可行
+# # 所以这里就要改为直接lpush或者rpush 然后pop出来  之后对old url 进行去重即可
+# def get_md5(data):
+#     md5 = hashlib.md5()
+#     md5.update(data.encode("utf-8"))
+#     res = md5.hexdigest()  # md5.hexdigest()[8:-8]  16bytes
+#     return res
 
-def get_md5(data):
-    md5 = hashlib.md5()
-    md5.update(data.encode("utf-8"))
-    res = md5.hexdigest()  # md5.hexdigest()[8:-8]  16bytes
-    return res
-
-redis_client = redis.Redis(host="localhost", port=6379, db=2)
-
-for l in lst:
-    string = json.dumps(l)
-    redis_client.hset("A1688",get_md5(string), string)
+# redis_client = redis.Redis(host="localhost", port=6379, db=2)
+# for l in lst:
+#     string = json.dumps(l)
+#     redis_client.hset("A1688",get_md5(string), string)
 
 # for i in redis_client.hgetall("A1688"):
 #     # print(i)
